@@ -9,7 +9,7 @@ import { ToastProvider } from './context/ToastContext.jsx'
 const router = createBrowserRouter(
   createRoutesFromElements(
     <Route path='/' element={<App />}>
-      <Route path='subject' element={<Subject />} />
+      <Route path='' element={<Subject />} />
       < Route path='timetable' element={<TimeTable />} />
       < Route path='attendance' element={<Attendance />} />
       < Route path='bunk' element={<Bunk />} />
