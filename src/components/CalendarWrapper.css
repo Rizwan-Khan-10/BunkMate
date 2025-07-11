@@ -1,0 +1,24 @@
+.react-calendar {
+  @apply w-full rounded-lg border dark:border-gray-700 shadow-md p-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100;
+}
+
+.react-calendar__tile {
+  @apply rounded-md px-2 py-1 text-sm;
+}
+
+.react-calendar__tile--active {
+  @apply bg-blue-600 text-white;
+}
+
+.react-calendar__tile--now {
+  @apply border border-blue-400;
+}
+
+.react-calendar__navigation__label,
+.react-calendar__navigation__arrow {
+  @apply text-base font-semibold dark:text-white;
+}
+
+.react-calendar__navigation {
+  @apply mb-4;
+}
