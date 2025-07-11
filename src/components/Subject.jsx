@@ -37,7 +37,7 @@ function Subject() {
 
   return (
     <div className="min-h-[calc(100vh-5rem)] w-full p-4 text-gray-900 dark:text-white bg-blue-50 dark:bg-slate-900 overflow-y-auto">
-      <h2 className="text-2xl font-bold my-6 text-center">Manage Subjects</h2>
+      <h2 className="text-2xl sm:text-4xl font-bold my-6 text-center">Manage Subjects</h2>
 
       <form
         onSubmit={handleSubmit}
@@ -86,7 +86,7 @@ function Subject() {
           </div>
           <button
             type="submit"
-            className="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full"
+            className="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full text-sm sm:text-base"
           >
             Add Subject
           </button>
@@ -95,7 +95,7 @@ function Subject() {
 
       {subjects.length > 0 && (
         <div className="mt-8">
-          <h3 className="text-lg font-semibold mb-3">Your Subjects</h3>
+          <h3 className="text-base sm:text-lg font-semibold mb-3">Your Subjects</h3>
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
             {subjects.map((subj) => (
               <div
@@ -159,12 +159,12 @@ function Subject() {
                   <>
                     <div className="flex items-center gap-3">
                       <span
-                        className="inline-block w-5 h-5 rounded-full"
+                        className="inline-block w-3 h-3 sm:w-5 sm:h-5 rounded-full"
                         style={{ backgroundColor: subj.color }}
                       />
                       <div>
-                        <div className="font-medium">{subj.name}</div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">{subj.shortCode}</div>
+                        <div className="font-medium text-sm sm:text-base">{subj.name}</div>
+                        <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{subj.shortCode}</div>
                       </div>
                     </div>
                     <div className="flex gap-3 text-lg">
@@ -177,13 +177,13 @@ function Subject() {
                             color: subj.color,
                           });
                         }}
-                        className="text-indigo-600 hover:text-indigo-800"
+                        className="text-indigo-600 hover:text-indigo-800 text-sm sm:text-base"
                       >
                         <FiEdit />
                       </button>
                       <button
                         onClick={() => removeSubject(subj.id)}
-                        className="text-rose-600 hover:text-rose-800"
+                        className="text-rose-600 hover:text-rose-800 text-sm sm:text-base"
                       >
                         <FiTrash />
                       </button>

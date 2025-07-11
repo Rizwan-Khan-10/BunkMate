@@ -8,7 +8,7 @@ function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navItems = [
-    { name: 'Subject', to: '/subject' },
+    { name: 'Subject', to: '/' },
     { name: 'Timetable', to: '/timetable' },
     { name: 'Attendance', to: '/attendance' },
     { name: 'Bunk', to: '/bunk' },
@@ -17,7 +17,7 @@ function Header() {
   return (
     <header className="bg-white dark:bg-slate-950 shadow-sm sticky top-0 z-50">
       <div className="w-full px-4 py-3 flex items-center justify-between h-[5rem]">
-        <div className="text-2xl font-bold text-blue-600 tracking-tight">
+        <div className="text-xl sm:text-2xl font-bold text-blue-600 tracking-tight">
           Bunk<span className='text-yellow-500'>Mate</span>
         </div>
 
@@ -40,7 +40,7 @@ function Header() {
 
           <button
             onClick={toggleTheme}
-            className="text-xl transition-colors text-gray-700 dark:text-gray-200 hover:text-blue-500"
+            className="text-base sm:text-lg transition-colors text-gray-700 dark:text-gray-200 hover:text-blue-500"
             aria-label="Toggle Theme"
           >
             {isDark ? <FaSun /> : <FaMoon />}
@@ -48,7 +48,7 @@ function Header() {
         </nav>
 
         <button
-          className="md:hidden text-2xl text-gray-700 dark:text-white"
+          className="md:hidden text-lg sm:text-xl text-gray-700 dark:text-white"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Toggle Menu"
         >

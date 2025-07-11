@@ -115,24 +115,26 @@ function Bunk() {
 
   return (
     <div className="p-6 text-gray-900 dark:text-white bg-blue-50 dark:bg-slate-900">
-      <h1 className="text-3xl font-bold mb-4 text-center">Bunk Manager</h1>
+      <h1 className="text-2xl sm:text-4xl font-bold mb-4 text-center">Bunk Manager</h1>
 
-      <div className="mb-6 text-center">
+      <div className="mb-6 text-center bg-white dark:bg-slate-950 p-4 border rounded">
         <label htmlFor="minRequiredInput" className="text-sm font-medium">
           Minimum Required %
           <input
             id="minRequiredInput"
             type="number"
             autoComplete="off"
-            value={minRequired}
-            onChange={(e) => setMinRequired(Number(e.target.value))}
+            value={minRequired === null ? '' : minRequired}
+            onChange={(e) =>
+              setMinRequired(e.target.value === '' ? null : Number(e.target.value))
+            }
             className="ml-2 w-20 px-2 py-1 border rounded dark:bg-slate-900 dark:border-gray-600"
           />
         </label>
       </div>
 
-      <h2 className="text-xl font-semibold mb-2">Current Month: {currentMonth}</h2>
-      <div className="space-y-4 mb-8">
+      <h2 className="text-base sm:text-xl font-semibold mb-2 text-center">Current Month: {currentMonth}</h2>
+      <div className="space-y-4 mb-5">
         {monthlyData[currentMonth] &&
           Object.entries(monthlyData[currentMonth]).map(([subject, { attended, total }]) => {
             const { afterBunkPercent, canBunk, bunkableHours } = calculateBunkInfo(attended, total, subject);
@@ -140,13 +142,13 @@ function Bunk() {
             const inputId = `bunk-${subject}`;
 
             return (
-              <div key={subject} className="p-4 border rounded bg-white dark:bg-slate-800">
-                <h3 className="font-semibold text-lg">{subject}</h3>
+              <div key={subject} className="p-4 border rounded bg-white dark:bg-slate-950">
+                <h3 className="font-semibold text-base sm:text-lg">{subject}</h3>
                 <p>{attended} / {total} hrs ({calculatePercentage(attended, total)}%)</p>
                 {canBunk ? (
-                  <p className="text-blue-600">You can bunk up to <strong>{bunkableHours}</strong> hour(s)</p>
+                  <p className="text-blue-600 text-sm sm:text-base">You can bunk up to <strong>{bunkableHours}</strong> hour(s)</p>
                 ) : (
-                  <p className="text-red-600">You should not bunk. Attend <strong>{required}</strong> more hour(s)</p>
+                  <p className="text-red-600 text-sm sm:text-base">You should not bunk. Attend <strong>{required}</strong> more hour(s)</p>
                 )}
                 <label htmlFor={inputId}>
                   If you bunk:
@@ -161,25 +163,25 @@ function Bunk() {
                         [subject]: parseInt(e.target.value),
                       }))
                     }
-                    className="ml-2 w-16 px-2 py-1 border rounded dark:bg-slate-900"
+                    className="ml-2 w-16 px-2 py-1 text-sm border rounded dark:bg-slate-900"
                   />
                 </label>
-                <p className="mt-1">After bunking: <strong>{afterBunkPercent}%</strong></p>
+                <p className="mt-1 text-sm sm:text-base">After bunking: <strong>{afterBunkPercent}%</strong></p>
               </div>
             );
           })}
       </div>
 
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Total Summary</h2>
-        <div className="p-4 border rounded bg-white dark:bg-slate-800">
+      <div className="mb-5">
+        <h2 className="text-base sm:text-xl font-semibold mb-2 text-center">Total Summary</h2>
+        <div className="p-4 border text-sm sm:text-base rounded bg-white dark:bg-slate-950">
           <p><strong>Attended:</strong> {totalSummary.attended} hrs</p>
           <p><strong>Total:</strong> {totalSummary.total} hrs</p>
           <p><strong>Attendance:</strong> {calculatePercentage(totalSummary.attended, totalSummary.total)}%</p>
           {((totalSummary.attended / totalSummary.total) * 100 >= minRequired) ? (
-            <p className="text-blue-600">You can bunk up to <strong>{maxBunkableHours(totalSummary.attended, totalSummary.total)}</strong> hour(s)</p>
+            <p className="text-blue-600 text-sm sm:text-base">You can bunk up to <strong>{maxBunkableHours(totalSummary.attended, totalSummary.total)}</strong> hour(s)</p>
           ) : (
-            <p className="text-red-600">You need to attend <strong>{requiredHoursToReach(totalSummary.attended, totalSummary.total)}</strong> more hour(s)</p>
+            <p className="text-red-600 text-sm sm:text-base">You need to attend <strong>{requiredHoursToReach(totalSummary.attended, totalSummary.total)}</strong> more hour(s)</p>
           )}
           <label htmlFor="bunk-total" className="block text-sm mt-2">
             If you bunk:
@@ -197,14 +199,14 @@ function Bunk() {
               className="ml-2 w-16 px-2 py-1 border rounded dark:bg-slate-900"
             />
           </label>
-          <p className="mt-1">
+          <p className="mt-1 text-sm sm:text-base">
             Attendance after bunking: <strong>{calculateBunkInfo(totalSummary.attended, totalSummary.total, "total").afterBunkPercent}%</strong>
           </p>
         </div>
       </div>
 
-      <div className="mb-10">
-        <h2 className="text-xl font-semibold mb-2">Custom Attendance</h2>
+      <div className="mb-5">
+        <h2 className="text-base sm:text-xl font-semibold mb-2 text-center">Custom Attendance</h2>
         <div className="flex flex-wrap gap-3 mb-3">
           {allSubjects.map((subject) => (
             <label key={subject} htmlFor={`custom-${subject}`} className="flex items-center gap-2 text-sm">
@@ -231,14 +233,14 @@ function Bunk() {
           Invert Selection
         </button>
 
-        <div className="p-4 border rounded bg-white dark:bg-slate-800">
+        <div className="p-4 border text-sm sm:text-base rounded bg-white dark:bg-slate-950">
           <p><strong>Attended:</strong> {customSubjects.attended} hrs</p>
           <p><strong>Total:</strong> {customSubjects.total} hrs</p>
           <p><strong>Attendance:</strong> {calculatePercentage(customSubjects.attended, customSubjects.total)}%</p>
           {((customSubjects.attended / customSubjects.total) * 100 >= minRequired) ? (
-            <p className="text-blue-600">You can bunk up to <strong>{maxBunkableHours(customSubjects.attended, customSubjects.total)}</strong> hour(s)</p>
+            <p className="text-blue-600 text-sm sm:text-base">You can bunk up to <strong>{maxBunkableHours(customSubjects.attended, customSubjects.total)}</strong> hour(s)</p>
           ) : (
-            <p className="text-red-600">You need to attend <strong>{requiredHoursToReach(customSubjects.attended, customSubjects.total)}</strong> more hour(s)</p>
+            <p className="text-red-600 text-sm sm:text-base">You need to attend <strong>{requiredHoursToReach(customSubjects.attended, customSubjects.total)}</strong> more hour(s)</p>
           )}
           <label htmlFor="bunk-custom" className="block text-sm mt-2">
             If you bunk:
@@ -256,7 +258,7 @@ function Bunk() {
               className="ml-2 w-16 px-2 py-1 border rounded dark:bg-slate-900"
             />
           </label>
-          <p className="mt-1">
+          <p className="mt-1 text-sm sm:text-base">
             Attendance after bunking: <strong>{calculateBunkInfo(customSubjects.attended, customSubjects.total, "custom").afterBunkPercent}%</strong>
           </p>
         </div>

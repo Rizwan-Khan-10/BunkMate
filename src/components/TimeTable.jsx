@@ -57,10 +57,10 @@ function TimeTable() {
 
   return (
     <div className="min-h-[calc(100vh-5rem)] w-full p-4 text-gray-900 dark:text-white bg-blue-50 dark:bg-slate-900 overflow-y-auto">
-      <h2 className="text-2xl font-bold my-6 text-center">Manage Timetable</h2>
+      <h2 className="text-2xl sm:text-4xl font-bold my-6 text-center">Manage Timetable</h2>
 
       <div className="max-w-4xl mx-auto bg-white dark:bg-slate-950 p-6 rounded-xl shadow">
-        <h3 className="text-lg font-semibold mb-4">{editIndex !== null ? 'Update Slot' : 'Add New Slot'}</h3>
+        <h3 className="text-lg sm:text-xl text-center font-semibold mb-4">{editIndex !== null ? 'Update Slot' : 'Add New Slot'}</h3>
 
         <div className="grid md:grid-cols-2 gap-6">
           <div>
@@ -130,7 +130,7 @@ function TimeTable() {
         <div className="flex justify-center mt-6 gap-3">
           <button
             onClick={handleAddOrUpdate}
-            className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition"
+            className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition text-sm sm:text-base"
           >
             {editIndex !== null ? 'Update Slot' : 'Add Slot'}
           </button>
@@ -145,8 +145,8 @@ function TimeTable() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto mt-10">
-        <h3 className="text-lg font-semibold mb-4">
+      <div className="max-w-4xl mx-auto mt-5">
+        <h3 className="text-lg sm:text-xl text-center font-semibold mb-4">
           {selectedDay.charAt(0).toUpperCase() + selectedDay.slice(1)} Timetable
         </h3>
 
@@ -157,24 +157,24 @@ function TimeTable() {
               return (
                 <div
                   key={index}
-                  className="flex justify-between items-center p-4 border rounded-lg shadow bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                  className="flex justify-between items-center p-4 border rounded-lg shadow bg-white dark:bg-slate-950 border-gray-200 dark:border-gray-700"
                 >
                   <div>
-                    <div className="font-semibold">{subject?.name || 'Unknown Subject'}</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="font-semibold text-sm sm:text-base">{subject?.name || 'Unknown Subject'}</div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                       {slot.startTime} - {slot.endTime}
                     </div>
                   </div>
                   <div className="flex gap-3 text-xl">
                     <button
                       onClick={() => handleEdit(index, slot)}
-                      className="text-indigo-600 hover:text-indigo-800"
+                      className="text-indigo-600 hover:text-indigo-800 text-sm sm:text-base"
                     >
                       <FiEdit />
                     </button>
                     <button
                       onClick={() => handleDelete(index)}
-                      className="text-rose-600 hover:text-rose-800"
+                      className="text-rose-600 hover:text-rose-800 text-sm sm:text-base"
                     >
                       <FiTrash />
                     </button>
