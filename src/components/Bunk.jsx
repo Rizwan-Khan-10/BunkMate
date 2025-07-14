@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { useSubject } from "../context/subject";
 
 function Bunk() {
+  const { subjects } = useSubject();
   const [attendanceData, setAttendanceData] = useState([]);
   const [monthlyData, setMonthlyData] = useState({});
   const [allSubjects, setAllSubjects] = useState([]);
   const [customSelected, setCustomSelected] = useState([]);
+  const [inputMin, setInputMin] = useState("75");
   const [minRequired, setMinRequired] = useState(75);
   const [testBunkHours, setTestBunkHours] = useState({});
 
@@ -14,255 +17,204 @@ function Bunk() {
   }, []);
 
   useEffect(() => {
+    const num = parseFloat(inputMin);
+    if (!isNaN(num)) {
+      setMinRequired(num);
+    }
+  }, [inputMin]);
+
+  useEffect(() => {
     const monthly = {};
     const subjectSet = new Set();
-
     attendanceData.forEach(({ date, records }) => {
-      const month = new Date(date).toLocaleString("default", {
-        month: "long",
-        year: "numeric",
-      });
-      if (!monthly[month]) monthly[month] = {};
-
-      Object.entries(records).forEach(([_, record]) => {
-        const subject = record.name;
-        const duration = calculateLectureHours(record.startTime, record.endTime);
-
-        if (!monthly[month][subject]) {
-          monthly[month][subject] = { attended: 0, total: 0 };
-        }
-
-        monthly[month][subject].total += duration;
-        if (record.status === "Present") {
-          monthly[month][subject].attended += duration;
-        }
-
-        subjectSet.add(subject);
+      const dt = new Date(date);
+      const mon = dt.toLocaleString("default", { month: "long", year: "numeric" });
+      if (!monthly[mon]) monthly[mon] = { records: {}, dates: [] };
+      monthly[mon].dates.push(date);
+      Object.values(records).forEach(r => {
+        subjectSet.add(r.name);
+        const dur = getHours(r.startTime, r.endTime);
+        const prev = monthly[mon].records[r.name] || { attended: 0, total: 0 };
+        prev.total += dur;
+        if (r.status === "Present") prev.attended += dur;
+        monthly[mon].records[r.name] = prev;
       });
     });
-
     setMonthlyData(monthly);
-    const subjects = Array.from(subjectSet);
-    setAllSubjects(subjects);
-    setCustomSelected(subjects);
+    const subs = Array.from(subjectSet);
+    setAllSubjects(subs);
+    setCustomSelected(subs);
   }, [attendanceData]);
 
-  const calculateLectureHours = (start, end) => {
-    const getHour = (time) => parseInt(time.split(":")[0]);
-    const startHour = getHour(start);
-    const endHour = getHour(end);
-    const start24 = startHour <= 6 ? startHour + 12 : startHour;
-    const end24 = endHour <= 6 ? endHour + 12 : endHour;
-    return end24 - start24;
+  const getHours = (s, e) => {
+    const h1 = parseInt(s.split(":")[0]);
+    const h2 = parseInt(e.split(":")[0]);
+    const s24 = h1 <= 6 ? h1 + 12 : h1;
+    const e24 = h2 <= 6 ? h2 + 12 : h2;
+    return e24 - s24;
   };
 
-  const calculatePercentage = (attended, total) =>
-    total > 0 ? ((attended / total) * 100).toFixed(2) : "N/A";
+  const pct = (a, t) => (t > 0 ? ((a / t) * 100).toFixed(2) : "N/A");
 
-  const requiredHoursToReach = (attended, total) => {
-    if ((attended / total) * 100 >= minRequired) return 0;
+  const reqHrs = (a, t) => {
+    if (t === 0 || (a / t) * 100 >= minRequired) return 0;
     let x = 0;
-    while ((attended + x) / (total + x) * 100 < minRequired) x++;
+    while (((a + x) / (t + x)) * 100 < minRequired) x++;
     return x;
   };
 
-  const maxBunkableHours = (attended, total) => {
+  const maxBunks = (a, t) => {
     let x = 0;
-    while ((attended / (total + x)) * 100 >= minRequired) x++;
+    while (t + x === 0 || (a / (t + x)) * 100 >= minRequired) x++;
     return x - 1;
   };
 
-  const calculateBunkInfo = (attended, total, key) => {
-    const extra = testBunkHours[key] || 1;
-    const after = (attended / (total + extra)) * 100;
-    const canBunk = (attended / total) * 100 >= minRequired && (attended / (total + extra)) * 100 >= minRequired;
-    return {
-      afterBunkPercent: after.toFixed(2),
-      canBunk,
-      bunkableHours: maxBunkableHours(attended, total),
-    };
+  const bunkInfo = (a, t, k) => {
+    const extra = testBunkHours[k] || 1;
+    const after = (a / (t + extra)) * 100;
+    const can = a / t * 100 >= minRequired && after >= minRequired;
+    return { after: after.toFixed(2), can, max: maxBunks(a, t) };
   };
 
-  const currentMonth = new Date().toLocaleString("default", {
-    month: "long",
-    year: "numeric",
-  });
+  const isLight = hex => {
+    const c = hex.slice(1);
+    const rgb = parseInt(c, 16);
+    const r = (rgb >> 16) & 0xff, g = (rgb >> 8) & 0xff, b = rgb & 0xff;
+    return 0.299 * r + 0.587 * g + 0.114 * b > 180;
+  };
 
-  const totalSummary = { attended: 0, total: 0 };
-  Object.values(monthlyData).forEach((month) => {
-    Object.values(month).forEach(({ attended, total }) => {
-      totalSummary.attended += attended;
-      totalSummary.total += total;
-    });
-  });
+  const colorFor = name => subjects.find(s => s.name === name)?.color || "#ddd";
+  const invert = () => setCustomSelected(allSubjects.filter(s => !customSelected.includes(s)));
 
-  const customSubjects = customSelected.reduce(
-    (acc, subject) => {
-      Object.values(monthlyData).forEach((month) => {
-        if (month[subject]) {
-          acc.attended += month[subject].attended;
-          acc.total += month[subject].total;
-        }
-      });
-      return acc;
-    },
-    { attended: 0, total: 0 }
-  );
-
-  const invertSelection = () => {
-    setCustomSelected(allSubjects.filter((s) => !customSelected.includes(s)));
+  const onMinChange = (val) => {
+    setInputMin(val);
+    const num = val.trim() === "" ? null : Number(val);
+    if (!isNaN(num)) setMinRequired(num);
   };
 
   return (
-    <div className="p-6 text-gray-900 dark:text-white bg-blue-50 dark:bg-slate-900">
-      <h1 className="text-2xl sm:text-4xl font-bold mb-4 text-center">Bunk Manager</h1>
-
-      <div className="mb-6 text-center bg-white dark:bg-slate-950 p-4 border rounded">
-        <label htmlFor="minRequiredInput" className="text-sm font-medium">
-          Minimum Required %
-          <input
-            id="minRequiredInput"
-            type="number"
-            autoComplete="off"
-            value={minRequired === null ? '' : minRequired}
-            onChange={(e) =>
-              setMinRequired(e.target.value === '' ? null : Number(e.target.value))
-            }
-            className="ml-2 w-20 px-2 py-1 border rounded dark:bg-slate-900 dark:border-gray-600"
-          />
-        </label>
+    <div className="p-6 bg-blue-50 dark:bg-slate-900 text-gray-900 dark:text-white">
+      <div className="text-center mb-8">
+        <label className="text-sm font-medium mr-2">Minimum Required %</label>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={inputMin}
+          onChange={(e) => setInputMin(e.target.value)}
+          placeholder="75"
+          className="w-20 px-2 py-1 border rounded focus:outline-none focus:ring"
+        />
       </div>
 
-      <h2 className="text-base sm:text-xl font-semibold mb-2 text-center">Current Month: {currentMonth}</h2>
-      <div className="space-y-4 mb-5">
-        {monthlyData[currentMonth] &&
-          Object.entries(monthlyData[currentMonth]).map(([subject, { attended, total }]) => {
-            const { afterBunkPercent, canBunk, bunkableHours } = calculateBunkInfo(attended, total, subject);
-            const required = requiredHoursToReach(attended, total);
-            const inputId = `bunk-${subject}`;
+      {Object.entries(monthlyData).map(([mon, data]) => {
+        const dates = data.dates.map(d => new Date(d));
+        const from = dates.length
+          ? new Date(Math.min(...dates)).toLocaleDateString("default", { month: "short", day: "numeric" })
+          : "";
+        const to = dates.length
+          ? new Date(Math.max(...dates)).toLocaleDateString("default", { month: "short", day: "numeric", year: "numeric" })
+          : "";
+        const total = { attended: 0, total: 0 };
+        Object.values(data.records).forEach(r => {
+          total.attended += r.attended;
+          total.total += r.total;
+        });
+        const custom = customSelected.reduce((c, s) => {
+          if (data.records[s]) {
+            c.attended += data.records[s].attended;
+            c.total += data.records[s].total;
+          }
+          return c;
+        }, { attended: 0, total: 0 });
 
-            return (
-              <div key={subject} className="p-4 border rounded bg-white dark:bg-slate-950">
-                <h3 className="font-semibold text-base sm:text-lg">{subject}</h3>
-                <p>{attended} / {total} hrs ({calculatePercentage(attended, total)}%)</p>
-                {canBunk ? (
-                  <p className="text-blue-600 text-sm sm:text-base">You can bunk up to <strong>{bunkableHours}</strong> hour(s)</p>
-                ) : (
-                  <p className="text-red-600 text-sm sm:text-base">You should not bunk. Attend <strong>{required}</strong> more hour(s)</p>
-                )}
-                <label htmlFor={inputId}>
-                  If you bunk:
-                  <input
-                    id={inputId}
-                    autoComplete="off"
-                    type="number"
-                    value={testBunkHours[subject] || 1}
-                    onChange={(e) =>
-                      setTestBunkHours((prev) => ({
-                        ...prev,
-                        [subject]: parseInt(e.target.value),
-                      }))
-                    }
-                    className="ml-2 w-16 px-2 py-1 text-sm border rounded dark:bg-slate-900"
-                  />
-                </label>
-                <p className="mt-1 text-sm sm:text-base">After bunking: <strong>{afterBunkPercent}%</strong></p>
+        return (
+          <div key={mon} className="mb-12">
+            <h2 className="text-2xl font-semibold mb-4">{mon} ({from} – {to})</h2>
+
+            <div className="flex flex-wrap gap-5 mb-6">
+              {Object.entries(data.records).map(([subj, rec]) => {
+                const info = bunkInfo(rec.attended, rec.total, subj);
+                const req = reqHrs(rec.attended, rec.total);
+                const bg = colorFor(subj);
+                const tc = isLight(bg) ? "text-black" : "text-white";
+                return (
+                  <div key={subj} className={`w-[300px] p-5 rounded-lg shadow-lg ${tc}`} style={{ backgroundColor: bg }}>
+                    <h3 className="font-bold text-lg mb-2">{subj}</h3>
+                    <p className="text-sm mb-1">Attended: {rec.attended} hrs</p>
+                    <p className="text-sm mb-1">Total: {rec.total} hrs</p>
+                    <p className="text-sm mb-2">Attendance: {pct(rec.attended, rec.total)}%</p>
+                    {info.can
+                      ? <p className="text-sm mb-1">You can bunk up to <strong>{info.max}</strong> hr(s)</p>
+                      : <p className="text-sm mb-1">Attend <strong>{req}</strong> more hr(s) to meet the minimum attendance requirement. </p>}
+                    <div className="mt-2">
+                      <label className="text-sm block">If you bunk:
+                        <input
+                          type="number"
+                          value={testBunkHours[subj] || 1}
+                          onChange={e => setTestBunkHours(p => ({ ...p, [subj]: parseInt(e.target.value) }))}
+                          className="mx-2 mt-1 w-16 px-2 py-1 text-sm rounded border"
+                        />
+                        hour</label>
+                      <p className="text-sm mt-1">Your Attendace will be <strong>{info.after}%</strong></p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mb-6 w-[300px] mx-auto p-5 rounded-lg shadow-lg bg-white dark:bg-slate-950 text-gray-900 dark:text-white">
+              <h3 className="font-bold text-lg mb-2">Total Summary</h3>
+              <p className="text-sm mb-1">Attended: {total.attended} hrs</p>
+              <p className="text-sm mb-1">Total: {total.total} hrs</p>
+              <p className="text-sm mb-2">Attendance: {pct(total.attended, total.total)}%</p>
+              {total.total > 0 && (total.attended / total.total * 100 >= minRequired
+                ? <p className="text-sm text-green-600 mb-2">You can bunk up to <strong>{maxBunks(total.attended, total.total)}</strong> hr(s)</p>
+                : <p className="text-sm text-red-600 mb-2">Attend <strong>{reqHrs(total.attended, total.total)}</strong> more hr(s) to meet the minimum attendance requirement.</p>)}
+              <label className="text-sm block">If you bunk:
+                <input
+                  type="number"
+                  value={testBunkHours["total"] || 1}
+                  onChange={e => setTestBunkHours(p => ({ ...p, total: parseInt(e.target.value) }))}
+                  className="mx-2 mt-1 w-16 px-2 py-1 text-sm rounded border"
+                />
+                hour</label>
+              <p className="text-sm mt-1">Your Attendace will be <strong>{bunkInfo(total.attended, total.total, "total").after}%</strong></p>
+            </div>
+
+            <div className="w-[300px] mx-auto p-5 rounded-lg shadow-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">
+              <h3 className="font-bold text-lg mb-2">Custom Attendance</h3>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {allSubjects.map(s => (
+                  <label key={s} className="flex items-center gap-1 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={customSelected.includes(s)}
+                      onChange={() => setCustomSelected(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])}
+                    />
+                    {s}
+                  </label>
+                ))}
               </div>
-            );
-          })}
-      </div>
-
-      <div className="mb-5">
-        <h2 className="text-base sm:text-xl font-semibold mb-2 text-center">Total Summary</h2>
-        <div className="p-4 border text-sm sm:text-base rounded bg-white dark:bg-slate-950">
-          <p><strong>Attended:</strong> {totalSummary.attended} hrs</p>
-          <p><strong>Total:</strong> {totalSummary.total} hrs</p>
-          <p><strong>Attendance:</strong> {calculatePercentage(totalSummary.attended, totalSummary.total)}%</p>
-          {((totalSummary.attended / totalSummary.total) * 100 >= minRequired) ? (
-            <p className="text-blue-600 text-sm sm:text-base">You can bunk up to <strong>{maxBunkableHours(totalSummary.attended, totalSummary.total)}</strong> hour(s)</p>
-          ) : (
-            <p className="text-red-600 text-sm sm:text-base">You need to attend <strong>{requiredHoursToReach(totalSummary.attended, totalSummary.total)}</strong> more hour(s)</p>
-          )}
-          <label htmlFor="bunk-total" className="block text-sm mt-2">
-            If you bunk:
-            <input
-              id="bunk-total"
-              autoComplete="off"
-              type="number"
-              value={testBunkHours["total"] || 1}
-              onChange={(e) =>
-                setTestBunkHours((prev) => ({
-                  ...prev,
-                  total: parseInt(e.target.value),
-                }))
-              }
-              className="ml-2 w-16 px-2 py-1 border rounded dark:bg-slate-900"
-            />
-          </label>
-          <p className="mt-1 text-sm sm:text-base">
-            Attendance after bunking: <strong>{calculateBunkInfo(totalSummary.attended, totalSummary.total, "total").afterBunkPercent}%</strong>
-          </p>
-        </div>
-      </div>
-
-      <div className="mb-5">
-        <h2 className="text-base sm:text-xl font-semibold mb-2 text-center">Custom Attendance</h2>
-        <div className="flex flex-wrap gap-3 mb-3">
-          {allSubjects.map((subject) => (
-            <label key={subject} htmlFor={`custom-${subject}`} className="flex items-center gap-2 text-sm">
-              <input
-                id={`custom-${subject}`}
-                type="checkbox"
-                checked={customSelected.includes(subject)}
-                onChange={() =>
-                  setCustomSelected((prev) =>
-                    prev.includes(subject)
-                      ? prev.filter((s) => s !== subject)
-                      : [...prev, subject]
-                  )
-                }
-              />
-              {subject}
-            </label>
-          ))}
-        </div>
-        <button
-          onClick={invertSelection}
-          className="text-sm text-blue-600 underline mb-3"
-        >
-          Invert Selection
-        </button>
-
-        <div className="p-4 border text-sm sm:text-base rounded bg-white dark:bg-slate-950">
-          <p><strong>Attended:</strong> {customSubjects.attended} hrs</p>
-          <p><strong>Total:</strong> {customSubjects.total} hrs</p>
-          <p><strong>Attendance:</strong> {calculatePercentage(customSubjects.attended, customSubjects.total)}%</p>
-          {((customSubjects.attended / customSubjects.total) * 100 >= minRequired) ? (
-            <p className="text-blue-600 text-sm sm:text-base">You can bunk up to <strong>{maxBunkableHours(customSubjects.attended, customSubjects.total)}</strong> hour(s)</p>
-          ) : (
-            <p className="text-red-600 text-sm sm:text-base">You need to attend <strong>{requiredHoursToReach(customSubjects.attended, customSubjects.total)}</strong> more hour(s)</p>
-          )}
-          <label htmlFor="bunk-custom" className="block text-sm mt-2">
-            If you bunk:
-            <input
-              id="bunk-custom"
-              autoComplete="off"
-              type="number"
-              value={testBunkHours["custom"] || 1}
-              onChange={(e) =>
-                setTestBunkHours((prev) => ({
-                  ...prev,
-                  custom: parseInt(e.target.value),
-                }))
-              }
-              className="ml-2 w-16 px-2 py-1 border rounded dark:bg-slate-900"
-            />
-          </label>
-          <p className="mt-1 text-sm sm:text-base">
-            Attendance after bunking: <strong>{calculateBunkInfo(customSubjects.attended, customSubjects.total, "custom").afterBunkPercent}%</strong>
-          </p>
-        </div>
-      </div>
+              <button onClick={invert} className="text-sm underline mb-3">Invert Selection</button>
+              <p className="text-sm mb-1">Attended: {custom.attended} hrs</p>
+              <p className="text-sm mb-1">Total: {custom.total} hrs</p>
+              <p className="text-sm mb-2">Attendance: {pct(custom.attended, custom.total)}%</p>
+              {custom.total > 0 && (custom.attended / custom.total * 100 >= minRequired
+                ? <p className="text-sm text-green-600 mb-2">You can bunk up to <strong>{maxBunks(custom.attended, custom.total)}</strong> hr(s)</p>
+                : <p className="text-sm text-red-600 mb-2">Attend <strong>{reqHrs(custom.attended, custom.total)}</strong> more hr(s) to meet the minimum attendance requirement.</p>)}
+              <label className="text-sm block">If you bunk:
+                <input
+                  type="number"
+                  value={testBunkHours["custom"] || 1}
+                  onChange={e => setTestBunkHours(p => ({ ...p, custom: parseInt(e.target.value) }))}
+                  className="mx-2 mt-1 w-16 px-2 py-1 text-sm rounded border"
+                />
+                hour</label>
+              <p className="text-sm mt-1">Your Attendace will be <strong>{bunkInfo(custom.attended, custom.total, "custom").after}%</strong></p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

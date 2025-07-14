@@ -16,15 +16,6 @@ function Attendance() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [editing, setEditing] = useState(false);
   const [customSlots, setCustomSlots] = useState([]);
-  const [markType, setMarkType] = useState(null);
-
-  useEffect(() => {
-    const todaySlots = getTimetableForDate(new Date()).map((slot) => ({
-      ...slot,
-      attendance: 'Absent',
-    }));
-    setCustomSlots(todaySlots);
-  }, []);
 
   const getTimetableForDate = (date) => {
     const day = dayjs(date).format('dddd').toLowerCase();
@@ -33,13 +24,12 @@ function Attendance() {
 
   const getAttendanceForDate = (date) => {
     const formatted = dayjs(date).format('YYYY-MM-DD');
-    return attendance.find((a) => a.date === formatted)?.records || {};
+    return attendance.find((a) => a.date === formatted)?.records || null;
   };
 
   const handleMarkAll = (type) => {
     const updated = customSlots.map((slot) => ({ ...slot, attendance: type }));
     setCustomSlots(updated);
-    setMarkType(type);
     showToast(`Marked all as ${type}`, 'success');
   };
 
@@ -54,7 +44,7 @@ function Attendance() {
       const startTime = slot.startTime || '';
       const endTime = slot.endTime || '';
 
-      record[startTime+endTime] = {
+      record[startTime + endTime] = {
         name,
         shortcode,
         status: slot.attendance,
@@ -65,8 +55,41 @@ function Attendance() {
 
     addAttendance(dateStr, record);
     showToast('Attendance saved successfully!', 'success');
-    setMarkType(null);
   };
+
+  useEffect(() => {
+    loadSlotsForDate(new Date());
+  }, []);
+
+  const loadSlotsForDate = (date) => {
+    setSelectedDate(date);
+    const dateStr = dayjs(date).format('YYYY-MM-DD');
+    const saved = attendance.find((a) => a.date === dateStr)?.records;
+
+    if (saved) {
+      const slots = Object.values(saved).map((rec) => {
+        const subject = subjects.find((s) => s.shortCode === rec.shortcode || s.name === rec.name);
+        return {
+          subjectId: subject?.id || '',
+          startTime: rec.startTime,
+          endTime: rec.endTime,
+          attendance: rec.status || 'Absent',
+        };
+      });
+      setCustomSlots(slots);
+    } else {
+      const daySlots = getTimetableForDate(date).map((slot) => ({
+        ...slot,
+        attendance: 'Absent',
+      }));
+      setCustomSlots(daySlots);
+    }
+
+    setEditing(false);
+  };
+
+  const allPresent = customSlots.length > 0 && customSlots.every((s) => s.attendance === 'Present');
+  const allAbsent = customSlots.length > 0 && customSlots.every((s) => s.attendance === 'Absent');
 
   return (
     <div className="min-h-[calc(100vh-5rem)] p-4 bg-blue-50 dark:bg-slate-900 text-gray-900 dark:text-white">
@@ -75,19 +98,7 @@ function Attendance() {
 
         <div className="bg-white dark:bg-slate-950 p-4 rounded-lg shadow-md flex justify-center items-center">
           <Calendar
-            onClickDay={(date) => {
-              setSelectedDate(date);
-              const daySlots = getTimetableForDate(date).map((slot) => {
-                const record = getAttendanceForDate(date)[slot.subjectId];
-                return {
-                  ...slot,
-                  attendance: record?.status || 'Absent',
-                };
-              });
-              setCustomSlots(daySlots);
-              setEditing(false);
-              setMarkType(null);
-            }}
+            onClickDay={loadSlotsForDate}
             showFixedNumberOfWeeks
           />
         </div>
@@ -102,15 +113,19 @@ function Attendance() {
               <div className="flex flex-wrap justify-center items-center sm:flex-row gap-4 mb-4">
                 <button
                   onClick={() => handleMarkAll('Present')}
-                  disabled={markType === 'Present'}
-                  className={`px-4 py-2 text-sm sm:text-base border w-fit rounded text-white ${markType === 'Present' ? 'bg-green-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
+                  disabled={allPresent}
+                  className={`px-4 py-2 text-sm sm:text-base border w-fit rounded text-white ${
+                    allPresent ? 'bg-green-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+                  }`}
                 >
                   Mark All Present
                 </button>
                 <button
                   onClick={() => handleMarkAll('Absent')}
-                  disabled={markType === 'Absent'}
-                  className={`px-4 py-2 text-sm sm:text-base border w-fit rounded text-white ${markType === 'Absent' ? 'bg-red-300 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
+                  disabled={allAbsent}
+                  className={`px-4 py-2 text-sm sm:text-base border w-fit rounded text-white ${
+                    allAbsent ? 'bg-red-300 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'
+                  }`}
                 >
                   Mark All Absent
                 </button>
@@ -119,7 +134,7 @@ function Attendance() {
 
             {!editing ? (
               customSlots.length === 0 ? (
-                <p className="text-red-500 text-sm sm:text-base">No timetable available for this day.</p>
+                <p className="text-red-500 text-sm sm:text-base">No timetable or attendance available for this day.</p>
               ) : (
                 <>
                   <div className="space-y-3">
@@ -144,8 +159,8 @@ function Attendance() {
                             }}
                             className="border text-sm sm:text-base px-2 py-1 rounded dark:bg-gray-700 dark:text-white"
                           >
-                            <option value="Present text-sm sm:text-base">Present</option>
-                            <option value="Absent text-sm sm:text-base">Absent</option>
+                            <option value="Present">Present</option>
+                            <option value="Absent">Absent</option>
                           </select>
                         </div>
                       );
@@ -230,8 +245,8 @@ function Attendance() {
                       }}
                       className="border px-2 py-1 text-sm sm:text-base rounded dark:bg-gray-700 dark:text-white"
                     >
-                      <option value="Present text-sm sm:text-base">Present</option>
-                      <option value="Absent text-sm sm:text-base">Absent</option>
+                      <option value="Present">Present</option>
+                      <option value="Absent">Absent</option>
                     </select>
 
                     <button
