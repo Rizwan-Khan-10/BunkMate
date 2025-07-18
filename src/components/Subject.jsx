@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSubject } from '../context/subject';
+import { useSubject } from '../context/SubjectContext';
 import { v4 as uuidv4 } from 'uuid';
 import { FiEdit, FiTrash } from 'react-icons/fi';
 
@@ -8,9 +8,8 @@ function Subject() {
 
   const [name, setName] = useState('');
   const [shortCode, setShortCode] = useState('');
-  const [color, setColor] = useState('#007bff');
   const [editId, setEditId] = useState(null);
-  const [editValues, setEditValues] = useState({ name: '', shortCode: '', color: '#007bff' });
+  const [editValues, setEditValues] = useState({ name: '', shortCode: '' });
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -20,13 +19,11 @@ function Subject() {
       id: uuidv4(),
       name: name.trim(),
       shortCode: shortCode.trim(),
-      color
     };
 
     addSubject(newSubject);
     setName('');
     setShortCode('');
-    setColor('#007bff');
   };
 
   const handleEditSave = (id) => {
@@ -35,31 +32,9 @@ function Subject() {
     setEditValues({ name: '', shortCode: '', color: '#007bff' });
   };
 
-  const getData = () => {
-    const data1 = JSON.parse(localStorage.getItem("subject"));
-    const data2 = JSON.parse(localStorage.getItem("timeTable"));
-
-    const combinedData = {
-      subject: data1,
-      timeTable: data2,
-    };
-
-    const textToCopy = JSON.stringify(combinedData, null, 2); // Pretty format
-
-    navigator.clipboard.writeText(textToCopy)
-      .then(() => {
-        alert("Data copied to clipboard!");
-      })
-      .catch((err) => {
-        console.error("Failed to copy:", err);
-      });
-  };
-
-
   return (
     <div className="min-h-[calc(100vh-5rem)] w-full p-4 text-gray-900 dark:text-white bg-blue-50 dark:bg-slate-900 overflow-y-auto">
       <h2 className="text-2xl sm:text-4xl font-bold my-6 text-center">Manage Subjects</h2>
-      <button onClick={getData}>Click</button>
       <form
         onSubmit={handleSubmit}
         className="grid md:grid-cols-3 gap-4 bg-white dark:bg-slate-950 p-4 rounded-xl shadow"
@@ -93,18 +68,7 @@ function Subject() {
           </label>
         </div>
 
-        <div className="flex justify-between items-center gap-5">
-          <div>
-            <label htmlFor='color' className="block text-sm sm:text-base font-semibold mb-1">Color
-              <input
-                type="color"
-                id='color'
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="w-20 h-10 rounded"
-              />
-            </label>
-          </div>
+        <div className="w-full flex justify-center items-end mb-1">
           <button
             type="submit"
             className="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full text-sm sm:text-base"

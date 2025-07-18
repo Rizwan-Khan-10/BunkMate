@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import dayjs from 'dayjs';
-import { useTimeTable } from '../context/timeTable';
-import { useAttendance } from '../context/attendance';
-import { useSubject } from '../context/subject';
+import { useTimeTable } from '../context/TimeTableContext';
+import { useAttendance } from '../context/AttendanceContext';
+import { useSubject } from '../context/SubjectContext';
 import { useToast } from '../context/ToastContext';
 
 function Attendance() {
   const { timeTable } = useTimeTable();
-  const { attendance, addAttendance } = useAttendance();
+  const { attendance, addAttendance, removeAttendance } = useAttendance();
   const { subjects } = useSubject();
   const { showToast } = useToast();
 
@@ -17,14 +17,12 @@ function Attendance() {
   const [editing, setEditing] = useState(false);
   const [customSlots, setCustomSlots] = useState([]);
 
+  const selectedDateStr = dayjs(selectedDate).format('YYYY-MM-DD');
+  const attendanceExists = attendance.some((a) => a.date === selectedDateStr);
+
   const getTimetableForDate = (date) => {
     const day = dayjs(date).format('dddd').toLowerCase();
     return timeTable[day] || [];
-  };
-
-  const getAttendanceForDate = (date) => {
-    const formatted = dayjs(date).format('YYYY-MM-DD');
-    return attendance.find((a) => a.date === formatted)?.records || null;
   };
 
   const handleMarkAll = (type) => {
@@ -34,38 +32,32 @@ function Attendance() {
   };
 
   const handleConfirm = () => {
-    const dateStr = dayjs(selectedDate).format('YYYY-MM-DD');
     const record = {};
-
     customSlots.forEach((slot) => {
       const subject = subjects.find((s) => s.id === slot.subjectId);
-      const name = subject?.name || 'Unknown';
-      const shortcode = subject?.shortCode || '';
-      const startTime = slot.startTime || '';
-      const endTime = slot.endTime || '';
-
-      record[startTime + endTime] = {
-        name,
-        shortcode,
+      record[slot.startTime + slot.endTime] = {
+        name: subject?.name || 'Unknown',
+        shortcode: subject?.shortCode || '',
         status: slot.attendance,
-        startTime,
-        endTime,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
       };
     });
-
-    addAttendance(dateStr, record);
+    addAttendance(selectedDateStr, record);
     showToast('Attendance saved successfully!', 'success');
   };
 
-  useEffect(() => {
-    loadSlotsForDate(new Date());
-  }, []);
+  const handleUnmark = () => {
+    removeAttendance(selectedDateStr);
+    const reset = customSlots.map((s) => ({ ...s, attendance: 'Absent' }));
+    setCustomSlots(reset);
+    showToast('Attendance removed successfully!', 'success');
+  };
 
   const loadSlotsForDate = (date) => {
     setSelectedDate(date);
     const dateStr = dayjs(date).format('YYYY-MM-DD');
     const saved = attendance.find((a) => a.date === dateStr)?.records;
-
     if (saved) {
       const slots = Object.values(saved).map((rec) => {
         const subject = subjects.find((s) => s.shortCode === rec.shortcode || s.name === rec.name);
@@ -84,9 +76,12 @@ function Attendance() {
       }));
       setCustomSlots(daySlots);
     }
-
     setEditing(false);
   };
+
+  useEffect(() => {
+    loadSlotsForDate(new Date());
+  }, []);
 
   const allPresent = customSlots.length > 0 && customSlots.every((s) => s.attendance === 'Present');
   const allAbsent = customSlots.length > 0 && customSlots.every((s) => s.attendance === 'Absent');
@@ -97,17 +92,17 @@ function Attendance() {
         <h2 className="text-2xl sm:text-4xl font-bold mb-6 text-center">Attendance Calendar</h2>
 
         <div className="bg-white dark:bg-slate-950 p-4 rounded-lg shadow-md flex justify-center items-center">
-          <Calendar
-            onClickDay={loadSlotsForDate}
-            showFixedNumberOfWeeks
-          />
+          <Calendar onClickDay={loadSlotsForDate} showFixedNumberOfWeeks />
         </div>
 
         {selectedDate && (
           <div className="mt-8 bg-white dark:bg-slate-950 p-6 rounded-xl shadow-md">
-            <h3 className="text-base sm:text-xl text-center font-semibold mb-4">
+            <h3 className="text-base sm:text-xl text-center font-semibold mb-2">
               Attendance for {dayjs(selectedDate).format('MMMM D, YYYY')}
             </h3>
+            <p className={`text-center text-sm sm:text-base mb-4 ${attendanceExists ? 'text-green-600' : 'text-red-500'}`}>
+              {attendanceExists ? "This day's attendance is marked" : "This day's attendance is not marked"}
+            </p>
 
             {!editing && customSlots.length > 0 && (
               <div className="flex flex-wrap justify-center items-center sm:flex-row gap-4 mb-4">
@@ -129,6 +124,14 @@ function Attendance() {
                 >
                   Mark All Absent
                 </button>
+                {attendanceExists && (
+                  <button
+                    onClick={handleUnmark}
+                    className="px-4 py-2 text-sm sm:text-base border w-fit rounded text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    Unmark Attendance
+                  </button>
+                )}
               </div>
             )}
 
@@ -168,13 +171,9 @@ function Attendance() {
                   </div>
 
                   <div className="mt-4 flex flex-col sm:flex-row justify-center items-center gap-3">
-                    <button
-                      onClick={() => setEditing(true)}
-                      className="text-blue-600 hover:underline text-sm sm:text-base"
-                    >
+                    <button onClick={() => setEditing(true)} className="text-blue-600 hover:underline text-sm sm:text-base">
                       Change timetable for this day
                     </button>
-
                     <button
                       onClick={handleConfirm}
                       className="bg-green-600 border text-white w-fit text-sm sm:text-base px-4 py-2 rounded hover:bg-green-700"
@@ -199,7 +198,7 @@ function Attendance() {
                         updated[index].subjectId = e.target.value;
                         setCustomSlots(updated);
                       }}
-                      className="border px-2 py-1 rounded text-sm sm:text-base dark:bg-gray-700 dark:text-white"
+                      className="border px-2 py-1 rounded text-sm sm:text-base dark:bg-gray-700 dark:text-white w-full"
                     >
                       {subjects.map((s) => (
                         <option key={s.id} value={s.id}>

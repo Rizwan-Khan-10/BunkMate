@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { useSubject } from '../context/subject';
-import { useTimeTable } from '../context/timeTable';
+import { useSubject } from '../context/SubjectContext';
+import { useTimeTable } from '../context/TimeTableContext';
 import { FiEdit, FiTrash } from 'react-icons/fi';
 
 const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
 function TimeTable() {
   const { subjects } = useSubject();
-  const { timeTable, updateTimeTable } = useTimeTable();
+  const { timeTable, updateTimeTable, removeTimeTable } = useTimeTable();
 
   const [selectedDay, setSelectedDay] = useState('monday');
   const [selectedSubject, setSelectedSubject] = useState('');
@@ -149,7 +149,23 @@ function TimeTable() {
         <h3 className="text-lg sm:text-xl text-center font-semibold mb-4">
           {selectedDay.charAt(0).toUpperCase() + selectedDay.slice(1)} Timetable
         </h3>
-
+        {timeTable[selectedDay] && timeTable[selectedDay].length > 0 && (
+          <div className="flex justify-center my-4">
+            <button
+              onClick={() => {
+                const confirmDelete = window.confirm(
+                  `Are you sure you want to delete all slots for ${selectedDay.charAt(0).toUpperCase() + selectedDay.slice(1)}?\nThis will remove all subject slots from the timetable for that day.`
+                );
+                if (confirmDelete) {
+                  removeTimeTable(selectedDay);
+                  resetFields();
+                }
+              }}
+              className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 text-sm sm:text-base rounded transition"
+            >
+              Clear All Slots for {selectedDay.charAt(0).toUpperCase() + selectedDay.slice(1)}
+            </button>
+          </div>)}
         {timeTable[selectedDay]?.length > 0 ? (
           <div className="space-y-3">
             {timeTable[selectedDay].map((slot, index) => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSubject } from "../context/subject";
+import { useSubject } from "../context/SubjectContext";
 
 function Bunk() {
   const { subjects } = useSubject();
@@ -7,19 +7,29 @@ function Bunk() {
   const [monthlyData, setMonthlyData] = useState({});
   const [allSubjects, setAllSubjects] = useState([]);
   const [customSelected, setCustomSelected] = useState([]);
-  const [inputMin, setInputMin] = useState("75");
+  const [inputMin, setInputMin] = useState("");
   const [minRequired, setMinRequired] = useState(75);
   const [testBunkHours, setTestBunkHours] = useState({});
+  const [view, setView] = useState("Total");
 
   useEffect(() => {
     const data = JSON.parse(localStorage.getItem("attendance")) || [];
     setAttendanceData(data);
+    const storedMin = localStorage.getItem("minRequired");
+    if (storedMin && !isNaN(Number(storedMin))) {
+      setInputMin(storedMin);
+      setMinRequired(Number(storedMin));
+    } else {
+      setInputMin("75");
+      setMinRequired(75);
+    }
   }, []);
 
   useEffect(() => {
     const num = parseFloat(inputMin);
     if (!isNaN(num)) {
       setMinRequired(num);
+      localStorage.setItem("minRequired", num);
     }
   }, [inputMin]);
 
@@ -54,167 +64,235 @@ function Bunk() {
     return e24 - s24;
   };
 
-  const pct = (a, t) => (t > 0 ? ((a / t) * 100).toFixed(2) : "N/A");
-
-  const reqHrs = (a, t) => {
-    if (t === 0 || (a / t) * 100 >= minRequired) return 0;
-    let x = 0;
-    while (((a + x) / (t + x)) * 100 < minRequired) x++;
-    return x;
+  const getSubjectCode = name => {
+    const sub = subjects.find(s => s.name === name);
+    return sub?.shortCode || name;
   };
 
-  const maxBunks = (a, t) => {
+  const CircularProgress = ({ value }) => {
+    const color = value >= minRequired ? "stroke-green-400" : "stroke-red-400";
+    return (
+      <svg className="w-24 h-24 transform rotate-0" viewBox="0 0 100 100">
+        <circle
+          cx="50"
+          cy="50"
+          r="45"
+          className="stroke-slate-300 dark:stroke-slate-700"
+          strokeWidth="10"
+          fill="none"
+        />
+        <circle
+          cx="50"
+          cy="50"
+          r="45"
+          className={`${color} transition-all duration-300`}
+          strokeWidth="10"
+          strokeDasharray="282.6"
+          strokeDashoffset={`${282.6 - (value / 100) * 282.6}`}
+          fill="none"
+        />
+        <text
+          x="50"
+          y="54"
+          textAnchor="middle"
+          fontSize="18"
+          fill="white"
+          className="font-bold"
+        >
+          {value}%
+        </text>
+      </svg>
+    );
+  };
+
+  const Card = ({ subj, data }) => {
+  const [hoursToBunk, setHoursToBunk] = useState(String(testBunkHours[subj] ?? 0));
+
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    if (/^\d*$/.test(val)) {
+      setHoursToBunk(val);
+      setTestBunkHours(prev => ({ ...prev, [subj]: Number(val || "0") }));
+    }
+  };
+
+  const parsedHours = Number(hoursToBunk || "0");
+  const updatedTotal = data.total + parsedHours;
+  const updatedPercentage =
+    updatedTotal > 0
+      ? ((data.attended / updatedTotal) * 100).toFixed(1)
+      : "N/A";
+
+  const isCanBunk =
+    (data.attended / data.total) * 100 >= minRequired &&
+    updatedPercentage >= minRequired;
+
+  const futureMaxBunks = (() => {
     let x = 0;
-    while (t + x === 0 || (a / (t + x)) * 100 >= minRequired) x++;
+    while ((data.attended / (data.total + parsedHours + x)) * 100 >= minRequired) x++;
     return x - 1;
-  };
+  })();
 
-  const bunkInfo = (a, t, k) => {
-    const extra = testBunkHours[k] || 1;
-    const after = (a / (t + extra)) * 100;
-    const can = a / t * 100 >= minRequired && after >= minRequired;
-    return { after: after.toFixed(2), can, max: maxBunks(a, t) };
-  };
+  const futureReqHrs = (() => {
+    let x = 0;
+    while (((data.attended + x) / (data.total + parsedHours + x)) * 100 < minRequired) x++;
+    return x;
+  })();
 
-  const isLight = hex => {
-    const c = hex.slice(1);
-    const rgb = parseInt(c, 16);
-    const r = (rgb >> 16) & 0xff, g = (rgb >> 8) & 0xff, b = rgb & 0xff;
-    return 0.299 * r + 0.587 * g + 0.114 * b > 180;
-  };
-
-  const colorFor = name => subjects.find(s => s.name === name)?.color || "#ddd";
-  const invert = () => setCustomSelected(allSubjects.filter(s => !customSelected.includes(s)));
-
-  const onMinChange = (val) => {
-    setInputMin(val);
-    const num = val.trim() === "" ? null : Number(val);
-    if (!isNaN(num)) setMinRequired(num);
-  };
+  const code = getSubjectCode(subj);
+  const currentPct =
+    data.total > 0 ? ((data.attended / data.total) * 100).toFixed(1) : "N/A";
 
   return (
-    <div className="p-6 bg-blue-50 dark:bg-slate-900 text-gray-900 dark:text-white">
-      <div className="text-center mb-8">
-        <label className="text-sm font-medium mr-2">Minimum Required %</label>
-        <input
-          type="text"
-          inputMode="numeric"
-          value={inputMin}
-          onChange={(e) => setInputMin(e.target.value)}
-          placeholder="75"
-          className="w-20 px-2 py-1 border rounded focus:outline-none focus:ring"
-        />
+    <div className="bg-white/10 dark:bg-slate-800/60 backdrop-blur-lg p-6 rounded-3xl shadow-lg w-[300px] border border-white/20 text-white flex flex-col items-center">
+      <h3 className="text-xl font-semibold mb-2 text-center">{code}</h3>
+      <CircularProgress value={parseFloat(currentPct)} />
+      <div className="text-sm mt-4 text-center space-y-1">
+        <p>Attended: {data.attended} hrs</p>
+        <p>Total: {data.total} hrs</p>
+
+        {isCanBunk ? (
+          <p className="text-green-400">
+            Can bunk <strong>{futureMaxBunks}</strong> hrs
+          </p>
+        ) : (
+          <p className="text-red-400">
+            Need to attend <strong>{futureReqHrs}</strong> hrs
+          </p>
+        )}
+
+        <div className="flex flex-col items-center mt-2 text-center text-sm">
+          <p className="mb-1">
+            If you bunk{" "}
+            <input
+              id={`bunk-${subj}`}
+              type="text"
+              inputMode="numeric"
+              value={hoursToBunk}
+              onChange={handleInputChange}
+              className="w-14 px-2 py-1 rounded bg-white/30 text-center mx-1 text-white"
+            />
+            hour(s)
+          </p>
+          <p>
+            Then your attendance will be <strong>{updatedPercentage}%</strong>
+          </p>
+        </div>
       </div>
+    </div>
+  );
+};
 
-      {Object.entries(monthlyData).map(([mon, data]) => {
-        const dates = data.dates.map(d => new Date(d));
-        const from = dates.length
-          ? new Date(Math.min(...dates)).toLocaleDateString("default", { month: "short", day: "numeric" })
-          : "";
-        const to = dates.length
-          ? new Date(Math.max(...dates)).toLocaleDateString("default", { month: "short", day: "numeric", year: "numeric" })
-          : "";
-        const total = { attended: 0, total: 0 };
-        Object.values(data.records).forEach(r => {
-          total.attended += r.attended;
-          total.total += r.total;
-        });
-        const custom = customSelected.reduce((c, s) => {
-          if (data.records[s]) {
-            c.attended += data.records[s].attended;
-            c.total += data.records[s].total;
-          }
-          return c;
-        }, { attended: 0, total: 0 });
 
-        return (
-          <div key={mon} className="mb-12">
-            <h2 className="text-2xl font-semibold mb-4">{mon} ({from} – {to})</h2>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900 p-6 text-gray-900 dark:text-white">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex flex-col justify-center gap-5 items-center mb-6">
+          <div>
+            <label htmlFor="min-required" className="mr-2">Minimum Required Percentage</label>
+            <input
+              id="min-required"
+              type="text"
+              value={inputMin}
+              onChange={(e) => setInputMin(e.target.value)}
+              className="w-16 px-2 py-1 rounded bg-white/80 dark:bg-slate-700 text-black dark:text-white text-center"
+            />
+          </div>
+          <div className="flex gap-2">
+            {["Total", "Custom", "Month"].map(v => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`px-4 py-1 rounded-full text-sm capitalize font-medium ${view === v
+                  ? "bg-blue-600 text-white"
+                  : "bg-slate-200 dark:bg-slate-700 hover:bg-blue-300 dark:hover:bg-slate-600"
+                  }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+        </div>
 
-            <div className="flex flex-wrap gap-5 mb-6">
-              {Object.entries(data.records).map(([subj, rec]) => {
-                const info = bunkInfo(rec.attended, rec.total, subj);
-                const req = reqHrs(rec.attended, rec.total);
-                const bg = colorFor(subj);
-                const tc = isLight(bg) ? "text-black" : "text-white";
-                return (
-                  <div key={subj} className={`w-[300px] p-5 rounded-lg shadow-lg ${tc}`} style={{ backgroundColor: bg }}>
-                    <h3 className="font-bold text-lg mb-2">{subj}</h3>
-                    <p className="text-sm mb-1">Attended: {rec.attended} hrs</p>
-                    <p className="text-sm mb-1">Total: {rec.total} hrs</p>
-                    <p className="text-sm mb-2">Attendance: {pct(rec.attended, rec.total)}%</p>
-                    {info.can
-                      ? <p className="text-sm mb-1">You can bunk up to <strong>{info.max}</strong> hr(s)</p>
-                      : <p className="text-sm mb-1">Attend <strong>{req}</strong> more hr(s) to meet the minimum attendance requirement. </p>}
-                    <div className="mt-2">
-                      <label className="text-sm block">If you bunk:
-                        <input
-                          type="number"
-                          value={testBunkHours[subj] || 1}
-                          onChange={e => setTestBunkHours(p => ({ ...p, [subj]: parseInt(e.target.value) }))}
-                          className="mx-2 mt-1 w-16 px-2 py-1 text-sm rounded border"
-                        />
-                        hour</label>
-                      <p className="text-sm mt-1">Your Attendace will be <strong>{info.after}%</strong></p>
-                    </div>
+        {view === "Month" && (
+          <div className="space-y-12">
+            {Object.entries(monthlyData).map(([mon, data]) => {
+              const dates = data.dates.map(d => new Date(d));
+              const from = new Date(Math.min(...dates)).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+              const to = new Date(Math.max(...dates)).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+
+              return (
+                <div key={mon}>
+                  <h2 className="text-3xl font-bold text-center mb-6">{mon} ({from} – {to})</h2>
+                  <div className="flex flex-wrap justify-center gap-6">
+                    {Object.entries(data.records).map(([subj, rec]) => (
+                      <Card key={subj} subj={subj} data={rec} />
+                    ))}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-            <div className="mb-6 w-[300px] mx-auto p-5 rounded-lg shadow-lg bg-white dark:bg-slate-950 text-gray-900 dark:text-white">
-              <h3 className="font-bold text-lg mb-2">Total Summary</h3>
-              <p className="text-sm mb-1">Attended: {total.attended} hrs</p>
-              <p className="text-sm mb-1">Total: {total.total} hrs</p>
-              <p className="text-sm mb-2">Attendance: {pct(total.attended, total.total)}%</p>
-              {total.total > 0 && (total.attended / total.total * 100 >= minRequired
-                ? <p className="text-sm text-green-600 mb-2">You can bunk up to <strong>{maxBunks(total.attended, total.total)}</strong> hr(s)</p>
-                : <p className="text-sm text-red-600 mb-2">Attend <strong>{reqHrs(total.attended, total.total)}</strong> more hr(s) to meet the minimum attendance requirement.</p>)}
-              <label className="text-sm block">If you bunk:
-                <input
-                  type="number"
-                  value={testBunkHours["total"] || 1}
-                  onChange={e => setTestBunkHours(p => ({ ...p, total: parseInt(e.target.value) }))}
-                  className="mx-2 mt-1 w-16 px-2 py-1 text-sm rounded border"
-                />
-                hour</label>
-              <p className="text-sm mt-1">Your Attendace will be <strong>{bunkInfo(total.attended, total.total, "total").after}%</strong></p>
-            </div>
+        {view === "Total" && (
+          <div className="flex justify-center mt-10">
+            <Card
+              subj="Total"
+              data={Object.values(monthlyData).reduce(
+                (acc, m) => {
+                  Object.values(m.records).forEach(r => {
+                    acc.attended += r.attended;
+                    acc.total += r.total;
+                  });
+                  return acc;
+                },
+                { attended: 0, total: 0 }
+              )}
+            />
+          </div>
+        )}
 
-            <div className="w-[300px] mx-auto p-5 rounded-lg shadow-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">
-              <h3 className="font-bold text-lg mb-2">Custom Attendance</h3>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {allSubjects.map(s => (
-                  <label key={s} className="flex items-center gap-1 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={customSelected.includes(s)}
-                      onChange={() => setCustomSelected(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])}
-                    />
-                    {s}
-                  </label>
-                ))}
-              </div>
-              <button onClick={invert} className="text-sm underline mb-3">Invert Selection</button>
-              <p className="text-sm mb-1">Attended: {custom.attended} hrs</p>
-              <p className="text-sm mb-1">Total: {custom.total} hrs</p>
-              <p className="text-sm mb-2">Attendance: {pct(custom.attended, custom.total)}%</p>
-              {custom.total > 0 && (custom.attended / custom.total * 100 >= minRequired
-                ? <p className="text-sm text-green-600 mb-2">You can bunk up to <strong>{maxBunks(custom.attended, custom.total)}</strong> hr(s)</p>
-                : <p className="text-sm text-red-600 mb-2">Attend <strong>{reqHrs(custom.attended, custom.total)}</strong> more hr(s) to meet the minimum attendance requirement.</p>)}
-              <label className="text-sm block">If you bunk:
-                <input
-                  type="number"
-                  value={testBunkHours["custom"] || 1}
-                  onChange={e => setTestBunkHours(p => ({ ...p, custom: parseInt(e.target.value) }))}
-                  className="mx-2 mt-1 w-16 px-2 py-1 text-sm rounded border"
-                />
-                hour</label>
-              <p className="text-sm mt-1">Your Attendace will be <strong>{bunkInfo(custom.attended, custom.total, "custom").after}%</strong></p>
+        {view === "Custom" && (
+          <div>
+            <div className="flex flex-wrap gap-2 justify-center mb-6">
+              {allSubjects.map(sub => (
+                <button
+                  key={sub}
+                  onClick={() =>
+                    setCustomSelected(s =>
+                      s.includes(sub) ? s.filter(x => x !== sub) : [...s, sub]
+                    )
+                  }
+                  className={`px-3 py-1 rounded-full text-sm font-medium border ${customSelected.includes(sub)
+                    ? "bg-blue-600 text-white"
+                    : "bg-white/20 text-white border-white/30"
+                    }`}
+                >
+                  {getSubjectCode(sub)}
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-center">
+              <Card
+                subj="Custom"
+                data={customSelected.reduce(
+                  (acc, s) => {
+                    Object.values(monthlyData).forEach(m => {
+                      if (m.records[s]) {
+                        acc.attended += m.records[s].attended;
+                        acc.total += m.records[s].total;
+                      }
+                    });
+                    return acc;
+                  },
+                  { attended: 0, total: 0 }
+                )}
+              />
             </div>
           </div>
-        );
-      })}
+        )}
+      </div>
     </div>
   );
 }
