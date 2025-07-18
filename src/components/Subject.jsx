@@ -35,10 +35,31 @@ function Subject() {
     setEditValues({ name: '', shortCode: '', color: '#007bff' });
   };
 
+  const getData = () => {
+    const data1 = JSON.parse(localStorage.getItem("subject"));
+    const data2 = JSON.parse(localStorage.getItem("timeTable"));
+
+    const combinedData = {
+      subject: data1,
+      timeTable: data2,
+    };
+
+    const textToCopy = JSON.stringify(combinedData, null, 2); // Pretty format
+
+    navigator.clipboard.writeText(textToCopy)
+      .then(() => {
+        alert("Data copied to clipboard!");
+      })
+      .catch((err) => {
+        console.error("Failed to copy:", err);
+      });
+  };
+
+
   return (
     <div className="min-h-[calc(100vh-5rem)] w-full p-4 text-gray-900 dark:text-white bg-blue-50 dark:bg-slate-900 overflow-y-auto">
       <h2 className="text-2xl sm:text-4xl font-bold my-6 text-center">Manage Subjects</h2>
-
+      <button onClick={getData}>Click</button>
       <form
         onSubmit={handleSubmit}
         className="grid md:grid-cols-3 gap-4 bg-white dark:bg-slate-950 p-4 rounded-xl shadow"
