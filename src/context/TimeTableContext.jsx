@@ -11,7 +11,7 @@ const defaultTimeTable = {
     { subjectId: "ITC602", startTime: "09:00", endTime: "11:00" },
     { subjectId: "ITL602", startTime: "11:00", endTime: "13:00" },
     { subjectId: "ITC604", startTime: "14:00", endTime: "15:00" },
-    { subjectId: "ITDo6014", startTime: "15:00", endTime: "16:00" },
+    { subjectId: "ITDO6014", startTime: "15:00", endTime: "16:00" },
     { subjectId: "FOSS", startTime: "16:00", endTime: "17:00" },
   ],
   wednesday: [
