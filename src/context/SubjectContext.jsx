@@ -12,6 +12,7 @@ const defaultSubjects = [
   { id: "ITL604", name: "MAD & PWA Lab", shortCode: "MDPW", color: "#000000" },
   { id: "ITL605", name: "DS using Python Lab", shortCode: "DS", color: "#ff0000" },
   { id: "ITM601", name: "Mini Project - 2B", shortCode: "MP2B", color: "#0000ff" },
+  { id: "FOSS", name: "Free Open Source Software", shortCode: "FOSS", color: "#ff00ff" },
 ];
 
 const SubjectContext = createContext();
