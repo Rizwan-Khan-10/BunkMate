@@ -21,12 +21,16 @@ export const AttendanceProvider = ({ children }) => {
     setAttendance(updated);
   };
 
+  const removeAllAttendance = () => {
+    setAttendance([]);
+  }
+
   useEffect(() => {
     localStorage.setItem("attendance", JSON.stringify(attendance));
   }, [attendance]);
 
   return (
-    <AttendanceContext.Provider value={{ attendance, addAttendance, removeAttendance }}>
+    <AttendanceContext.Provider value={{ attendance, addAttendance, removeAttendance, removeAllAttendance }}>
       {children}
     </AttendanceContext.Provider>
   );

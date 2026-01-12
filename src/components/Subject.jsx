@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { useSubject } from '../context/SubjectContext';
+import { useAttendance } from '../context/AttendanceContext';
+import { useTimeTable } from '../context/TimeTableContext';
 import { v4 as uuidv4 } from 'uuid';
 import { FiEdit, FiTrash } from 'react-icons/fi';
 
 function Subject() {
-  const { subjects, addSubject, removeSubject, updateSubject } = useSubject();
+  const { subjects, addSubject, removeSubject, updateSubject, removeAllSubjects } = useSubject();
+  const { removeAllAttendance } = useAttendance();
+  const { removeCompleteTimeTable } = useTimeTable();
 
   const [name, setName] = useState('');
   const [shortCode, setShortCode] = useState('');
@@ -31,6 +35,14 @@ function Subject() {
     setEditId(null);
     setEditValues({ name: '', shortCode: '', color: '#007bff' });
   };
+
+  const handleRemove = () => {
+    if (window.confirm('Are you sure to go on default settings')) {
+      removeAllAttendance();
+      removeAllSubjects();
+      removeCompleteTimeTable();
+    }
+  }
 
   return (
     <div className="min-h-[calc(100vh-5rem)] w-full p-4 text-gray-900 dark:text-white bg-blue-50 dark:bg-slate-900 overflow-y-auto">
@@ -180,6 +192,11 @@ function Subject() {
           </div>
         </div>
       )}
+
+      <div className='w-full flex flex-wrap justify-center items-center gap-5 py-5 mt-10'>
+        <h1>Danger Sections</h1>
+        <button onClick={handleRemove} className='px-4 py-2 bg-red-500 border border-black dark:border-white rounded-md cursor-pointer'>Go To Defualt Settings</button>
+      </div>
     </div>
   );
 }
